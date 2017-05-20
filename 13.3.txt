@@ -1,0 +1,57 @@
+Assignment 13.3
+
+
+
+1)HFile
+File format for hbase. 
+A file of sorted key/value pairs. 
+Both keys and values are byte arrays.
+When the MemStore accumulates enough data, the entire sorted KeyValue set is written 
+to a new HFile in HDFS.
+This is a sequential write.It is very fast, as it avoids moving the disk drive head.
+
+2)HRegion Server
+HRegionServer makes a set of HRegions available to clients. 
+It checks in with the HMaster. 
+There are many HRegionServers in a single HBase deployment.
+Region servers serve data for reads and writes.
+Regions are assigned to the Region Servers.
+A region server can serve about 1,000 regions.(which may belong to the same or different tables).
+Region Server runs on an HDFS data node and has the following components:
+WAL
+BlockCache
+MemStore
+Hfiles
+
+3)HBase Meta Table
+The .META. table keeps a list of all regions in the system. The .META. table structure is as follows:
+Key:Region key of the format ([table],[region start key],[region id])
+Values:info:regioninfo (serialized HRegionInfo instance for this region)
+info:server (server:port of the RegionServer containing this region)
+info:serverstartcode (start-time of the RegionServer process containing this region)
+When a table is in the process of splitting two other columns will be created, info:splitA and info:splitB which represent the two daughter regions. The values for these columns are also serialized HRegionInfo instances. After the region has been split eventually this row will be deleted.
+
+4)Zookeeper
+HBase uses ZooKeeper as a distributed coordination service to maintain server state in the cluster.
+Zookeeper maintains which servers are alive and available, and provides server failure notification.
+
+5)How read and write operation is performed in HBase.
+*Read Operation:
+A read request is sent to zookeeper from Hbase by the client.
+The zookeeper,gives the address for the META table.
+The process gets the region address of table from the META Table.
+From the specific HRegion, the process enters the BlockCache where data is present from previous read. 
+If the table is found, the process returns to client with the data as result.
+If the table is not found, the process starts to search MemStore. 
+If it is found, the process returns to client with the data as result.
+If the table is not found, the process moves forward in search of data within the HFile.
+The process takes required data from here and moves forward.
+The data is written in BlockCache, so that the next time, it can be instantly accessed by the client 
+Finally the read process with required data will be returned to client along with acknowledgment.
+
+*Write Operation:
+When the client issues a Put request, the first step is to write the data to the write-ahead log, the WAL:
+Edits are appended to the end of the WAL file that is stored on disk.
+The WAL is used to recover not-yet-persisted data in case a server crashes.
+Once the data is written to the WAL, it is placed in the MemStore. 
+Then, the put request acknowledgement returns to the client.
